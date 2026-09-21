@@ -9,10 +9,10 @@ No deep-learning weights required — runs on CPU with OpenCV alone.
 
 ```
 parts_classifier/
-├── segment.py        # 4-class segmentation + good/bad classifier
+├── segment_defect.py        # 4-class segmentation + good/bad classifier
 ├── eval.py           # Evaluation: metrics table + ROC curve
 ├── requirements.txt
-├── data/             # Raw input images
+├── data/             # Raw input images *.png files
 └── output/           # Generated masks and plots (created at runtime)
 ```
 
@@ -47,7 +47,7 @@ Segments each image into four labelled regions and classifies the part as **good
 | 2 | defective | bright red |
 | 3 | wire | silver |
 
-A part is classified **bad** when the fraction of `defective` pixels meets or exceeds `--threshold` (default 1 %).
+A part is classified **bad** when the fraction of `defective` pixels meets or exceeds `--threshold` (default 0.35 %).
 
 ### Output files (written to `--out`)
 
@@ -95,8 +95,8 @@ segment.py  —  5 image(s)  →  output/seg/
   Threshold: defect ≥ 1.00%  →  bad
 
   good_001.png                 1280×960  back 32.1%  good 61.4%  defe 0.1%  wire 6.4%  →  GOOD
-  scratches.png                1280×960  back 31.8%  good 54.2%  defe 7.3%  wire 6.7%  →  BAD  (defect 7.32%)
-  total_rust.png               1280×960  back 30.2%  good 28.1%  defe 35.4%  wire 6.3%  →  BAD  (defect 35.40%)
+  scratches_000.png                1280×960  back 31.8%  good 54.2%  defe 7.3%  wire 6.7%  →  BAD  (defect 7.32%)
+  total_rust_003.png               1280×960  back 30.2%  good 28.1%  defe 35.4%  wire 6.3%  →  BAD  (defect 35.40%)
 
 Summary:  1 good  /  2 bad  (threshold 1.00%)
 ```
@@ -160,9 +160,9 @@ python eval.py --labels labels.txt --input data --size 512 512
   ------------------------------  ----  ----  -------  -------
   good_001.png                    good  good    0.12%  TN
   good_002.png                    good  good    0.08%  TN
-  scratches.png                   bad   bad     7.32%  TP
-  major_rust.png                  bad   bad    22.10%  TP
-  total_rust.png                  bad   bad    35.40%  TP
+  scratches_001.png                   bad   bad     7.32%  TP
+  major_rust_003.png                  bad   bad    22.10%  TP
+  total_rust_004.png                  bad   bad    35.40%  TP
 
 ────────────────────────────────────────────────────────────────
   Confusion matrix  (positive = bad)
