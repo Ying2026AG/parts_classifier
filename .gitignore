@@ -2,7 +2,6 @@
 __pycache__/
 *.py[codz]
 *$py.class
-
 # C extensions
 *.so
 
@@ -22,6 +21,7 @@ var/
 wheels/
 share/python-wheels/
 *.egg-info/
+.idea/
 .installed.cfg
 *.egg
 MANIFEST
