@@ -26,7 +26,7 @@ def load_labels(path: Path):
             name, label = parts[0], parts[1].lower()
             continue
         entries.append((name, label))
-
+    return entries
 
 def confusion(tp, tn, fp, fn):
     total = tp+tn+fp+fn
@@ -42,7 +42,7 @@ def roc_curve(gt, scores):
     n_pos = int(gt.sum())
     n_neg = int((~gt).sum())
     if n_pos == 0 or n_neg == 0:
-        return np.array([0., 1.0], np.array([0., 1.]), np.array([1., 0.]), float("nan"))
+        return np.array([0., 1.0]), np.array([0., 1.]), np.array([1., 0.]), float("nan")
     thresholds = np.concatenate([[np.nextafter(scores.max(), np.inf)], np.sort(np.unique(scores))[::-1], [0, 0]])
     fprs, tprs = [], []
     for t in thresholds:
@@ -59,17 +59,17 @@ def roc_curve(gt, scores):
 
 
 def plot_roc(fprs, tprs, auc, op_fpr, op_tpr, threshold, out_path):
-    fig, ax = plot.subplots(figsize=(6, 6))
+    fig, ax = plt.subplots(figsize=(6, 6))
     ax.plot(fprs, tprs, color="steelblue", lw=2, label=f"ROC curve (AUC = {auc:.3f})")
     ax.plot([0, 1], [0, 1], color="gray", lw=1, linestyle="--", label="Random")
     ax.scatter([op_fpr], [op_tpr], color="crimson", zorder=5, s=80,
-               label=f"Threshold {threshold * 100.2f}% f(TPR={op_tpr:.2f}, FPR={op_fpr:.2f}")
+               label=f"Threshold {threshold * 100:.2f}% f(TPR={op_tpr:.2f}, FPR={op_fpr:.2f}")
     ax.set_xlabel("Fasle Positive Rate")
     ax.set_ylabel("True Positive Rate")
     ax.set_title("Roc Curve")
     ax.legend(loc="lower right", fontsize=9)
     ax.set_xlim(0, 1)
-    ax.set_ylin(0, 1)
+    ax.set_ylim(0, 1)
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
 
@@ -149,7 +149,7 @@ def main():
     print("-" * 52)
     print(f" Confusion matrix (positive = bad)")
     print(f" {'TP':>4} = {tp:>4}  FN = {fn:>4}")
-    print(f" {'FP':>4} = {fp:>4}  FN = {tn:>4}")
+    print(f" {'FP':>4} = {fp:>4}  TN = {tn:>4}")
     print()
     _fmt = lambda v: f"{v:.4f}" if v == v else " n/a"
     print(f" Precision: {_fmt(m['precision'])} "

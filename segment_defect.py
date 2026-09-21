@@ -32,15 +32,15 @@ PALETTE = np.array([
 ], dtype=np.uint8)
 
 
-def preprocess(img: np.ndarry, target_size: tuple[int, int] | None = None) -> np.ndarray:
+def preprocess(img: np.ndarray, target_size: tuple[int, int] | None = None) -> np.ndarray:
     """bilateral filter + CLAHE. Resizes only when target_size is given."""
     if target_size is not None:
         img = cv2.resize(img, target_size, interpolation=cv2.INTER_LANCZOS4)
     img = cv2.bilateralFilter(img, d=9, sigmaColor=75, sigmaSpace=75)
     lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
     l, a, b= cv2.split(lab)
-    clahe = cv2.createCLAHE(clipLimit=2.0, titlGridSize=(8, 8))
-    return cv2.cvtColor(cv2.merge([clahe.apply(l), a, b]), cv2.Color_LAB2BGR)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    return cv2.cvtColor(cv2.merge([clahe.apply(l), a, b]), cv2.COLOR_LAB2BGR)
 
 
 BG_SAT_MAX = 35
@@ -53,7 +53,7 @@ WIRE_VAL_MIN = 25
 HOLE_AREA_FRAC = 0.004
 RUST_RANGES = [
     (np.array([5, 50, 40]), np.array([25, 255, 230])),
-    (np.array([25, 30, 30]), np.array(50, 200, 200))
+    (np.array([25, 30, 30]), np.array([50, 200, 200]))
 ]
 
 BLUE_H_LO, BLUE_H_HI = 88, 150
@@ -63,25 +63,25 @@ BLUE_V_MIN = 30
 SMALL_REGION_FRAC = 0.0003
 DEFECT_MERGE_RADIUS = 18
 DEFECT_MIN_CORE_FRAC = 0.0004
-DEFECT_THRESHOLD = 0.01
+DEFECT_THRESHOLD = 0.0035
 
 
-def _part_masks(hsv:np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def _part_masks(hsv: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
     s = hsv[:, :, 1].astype(np.int32)
     v = hsv[:, :, 2].astype(np.int32)
 
     surface = (~((s < BG_SAT_MAX) & (v > BG_VAL_MIN))).astype(np.uint8) * 255
-    k9 = cv2.getsStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+    k9 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
     surface = cv2.morphologyEx(surface, cv2.MORPH_CLOSE, k9)
     surface = cv2.morphologyEx(surface, cv2.MORPH_OPEN, k9)
 
-    n, lbl, stats = cv2.connectedComponentsWithStats(surface, connectivity=8)
+    n, lbl, stats, _ = cv2.connectedComponentsWithStats(surface, connectivity=8)
     if n > 1:
         idx = 1+int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
         surface = (lbl == idx).astype(np.uint8) *225
 
-    contours, _ = cv2.findContours(surface, cv2.RETR_EXTERNAL)
+    contours, _ = cv2.findContours(surface, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     silhouette = np.zeros_like(surface)
     if contours:
@@ -105,7 +105,7 @@ def _classify(hsv: np.ndarray, part_silhouette: np.ndarray) -> np.ndarray:
 
     inside_lc = (low_chroma & in_part).astype(np.uint8) *255
     if cv2.countNonZero(inside_lc) > 0:
-        n_lc, lc_lbl, lc_stats = cv2.connectedComponentsWithStats(inside_lc, connectivity=8)
+        n_lc, lc_lbl, lc_stats, _ = cv2.connectedComponentsWithStats(inside_lc, connectivity=8)
         hole_thresh = h*w*HOLE_AREA_FRAC
         for i in range(1, n_lc):
             region = lc_lbl == i
@@ -185,7 +185,7 @@ def _enhance_defect_regions(labels: np.ndarray, hsv: np.ndarray, part_silhouette
             continue
         new_defect[region & (seed > 0)] = 255
 
-    k_bridge = cv2.getStructuringElement((cv2.MORPH_ELLIPSE, (7, 7)))
+    k_bridge = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
     new_defect = cv2.morphologyEx(new_defect, cv2.MORPH_CLOSE, k_bridge)
     new_defect = cv2.bitwise_and(new_defect, part_silhouette)
 
@@ -248,7 +248,7 @@ def save_results(img: np.ndarray, labels: np.ndarray, out_dir: Path, stem: str, 
     """Write label map, false-color seg, and optional overlay"""
     cv2.imwrite(str(out_dir/f"{stem}_labels.png"), labels)
     seg = labels_to_color(labels)
-    cv2 = imwrite(str(out_dir/f"{stem}_seg.png"), seg)
+    cv2.imwrite(str(out_dir/f"{stem}_seg.png"), seg)
 
     if save_overlay:
         blended = cv2.addWeighted(img, 0.55, seg, 0.45, 0)
@@ -300,7 +300,7 @@ def main() -> None:
         h, w = labels.shape
         tot = h*w
         cov = "  ".join(f"{CLASS_NAMES[i][:4]} {np.count_nonzero(labels == i)/tot * 100:.1f}%" for i in range(N_CLASSES))
-        tag = "GOOD" if verdict == "good" else f"BAG (defect {defect_frac *100:.2f}%"
+        tag = "GOOD" if verdict == "good" else f"BAD (defect {defect_frac *100:.2f}%)"
         print(f"  {src.name:<28} {w}x{h} {cov} -> {tag}")
 
         if verdict == "good":
@@ -311,7 +311,7 @@ def main() -> None:
         save_results(img, labels, out_dir, stem, save_overlay=not args.no_overlay)
 
     print(f"\n Summary: {n_good} good / {n_bad} bad "
-          f" (threshold {args.threshold *100:.2f}%")
+          f" (threshold {args.threshold *100:.2f}%)")
     print("DONE")
 
 
