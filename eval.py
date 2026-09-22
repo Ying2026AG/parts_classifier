@@ -24,8 +24,10 @@ def load_labels(path: Path):
                 print(f" [warn] line {lineno}: expected '<name> <label>', got {line!r}")
                 continue
             name, label = parts[0], parts[1].lower()
-            continue
-        entries.append((name, label))
+            if label not in ("good", "bad"):
+                print(f" [warn] line {lineno}: unknown label {label!r} - skip")
+                continue
+            entries.append((name, label))
     return entries
 
 def confusion(tp, tn, fp, fn):
@@ -54,7 +56,7 @@ def roc_curve(gt, scores):
     fprs = np.array(fprs)
     tprs = np.array(tprs)
     order = np.argsort(fprs)
-    auc = float(np.trapz(tprs[order]), fprs[order])
+    auc = float(np.trapezoid(tprs[order], fprs[order]))
     return fprs, tprs, thresholds, auc
 
 
@@ -131,14 +133,12 @@ def main():
 
     gt = np.array(gt_list, dtype=bool)
     scores = np.array(score_list, dtype=float)
-
     preds = scores >= args.threshold
-    tp = int((preds&gt).sum())
-    tn = int((~preds&~gt).sum())
-    fp = int((preds&~gt).sum())
-    fn = int((~preds&gt).sum())
+    tp = int((preds & gt).sum())
+    tn = int((~preds & ~gt).sum())
+    fp = int((preds & ~gt).sum())
+    fn = int((~preds & gt).sum())
     m = confusion(tp, tn, fp, fn)
-
     fprs, tprs,_, auc = roc_curve(gt, scores)
     n_pos = int(gt.sum())
     n_neg = int((~gt).sum())
@@ -153,11 +153,11 @@ def main():
     print()
     _fmt = lambda v: f"{v:.4f}" if v == v else " n/a"
     print(f" Precision: {_fmt(m['precision'])} "
-          f"({tp} of {tp+fp} predicted bad are truly bad")
+          f"({tp} of {tp+fp} predicted bad are truly bad)")
     print(f" Recall: {_fmt(m['recall'])} "
-          f"({tp} of {tp+fn} actual bad are caught")
+          f"({tp} of {tp+fn} actual bad are caught)")
     print(f" Accuracy : {_fmt(m['accuracy'])} "
-          f"({tp+tn} of {tp+tn+fp+fn} predictions are correct")
+          f"({tp+tn} of {tp+tn+fp+fn} predictions are correct)")
     print(f" F1 score: {_fmt(m['f1'])}")
     print(f"ROC AUC: {_fmt(auc)}")
     print("-"*52)

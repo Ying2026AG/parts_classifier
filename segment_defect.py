@@ -304,10 +304,9 @@ def main() -> None:
         print(f"  {src.name:<28} {w}x{h} {cov} -> {tag}")
 
         if verdict == "good":
-            n_good + 1
+            n_good += 1
         else:
             n_bad += 1
-
         save_results(img, labels, out_dir, stem, save_overlay=not args.no_overlay)
 
     print(f"\n Summary: {n_good} good / {n_bad} bad "
